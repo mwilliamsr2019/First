@@ -1,0 +1,127 @@
+---
+- name: Configure Ubuntu systems with SSSD and xRDP
+  hosts: ubuntu_servers
+  become: yes
+  
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  tasks:
+    - name: Install SSSD and dependencies
+      apt:
+        name:
+          - sssd
+          - sssd-tools
+          - libnss-sss
+          - libpam-sss
+          - adcli
+          - realmd
+          - packagekit
+          - oddjob
+          - oddjob-mkhomedir
+          - openssh-server
+        state: present
+
+    - name: Install xRDP and desktop environment
+      apt:
+        name:
+          - xrdp
+          - xfce4
+          - xfce4-goodies
+          - xorg
+          - dbus-x11
+          - x11-xserver-utils
+        state: present
+
+    - name: Configure SSSD
+      template:
+        src: sssd.conf.j2
+        dest: /etc/sssd/sssd.conf
+        owner: root
+        group: root
+        mode: '0600'
+      notify:
+        - restart sssd
+
+    - name: Configure NSSwitch to use SSSD
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^{{ item }}:'
+        line: '{{ item }}: files sss'
+      loop:
+        - passwd
+        - group
+        - shadow
+
+    - name: Configure PAM to use SSSD
+      command: pam-auth-update --enable sssd --enable mkhomedir
+      when: ansible_distribution_version is version('20.04', '>=')
+
+    - name: Configure xRDP to use XFCE
+      lineinfile:
+        path: /etc/xrdp/startwm.sh
+        regexp: 'test -x /etc/X11/Xsession && exec /etc/X11/Xsession'
+        line: 'startxfce4'
+        backup: yes
+
+    - name: Configure xRDP port
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^port='
+        line: 'port={{ xrdp_port }}'
+      notify:
+        - restart xrdp
+
+    - name: Configure xRDP security settings
+      lineinfile:
+        path: /etc/xrdp/xrdp.ini
+        regexp: '^{{ item.key }}='
+        line: '{{ item.key }}={{ item.value }}'
+      loop:
+        - { key: 'max_bpp', value: '{{ xrdp_max_bpp }}' }
+        - { key: 'crypt_level', value: '{{ xrdp_crypt_level }}' }
+        - { key: 'security_layer', value: '{{ xrdp_security_layer }}' }
+      notify:
+        - restart xrdp
+
+    - name: Add xrdp user to ssl-cert group
+      user:
+        name: xrdp
+        groups: ssl-cert
+        append: yes
+
+    - name: Enable and start services
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - sssd
+        - xrdp
+        - xrdp-sesman
+
+    - name: Configure UFW for xRDP
+      ufw:
+        rule: allow
+        port: "{{ xrdp_port | default(3389) }}"
+        proto: tcp
+      when: ansible_distribution == 'Ubuntu'
+
+  handlers:
+    - name: restart sssd
+      systemd:
+        name: sssd
+        state: restarted
+
+    - name: restart xrdp
+      systemd:
+        name: xrdp
+        state: restarted
+
+    - name: restart xrdp-sesman
+      systemd:
+        name: xrdp-sesman
+        state: restarted
