@@ -1,0 +1,70 @@
+[sssd]
+domains = {{ sssd_domain }}
+config_file_version = 2
+services = nss, pam
+
+[nss]
+filter_groups = root
+filter_users = root
+reconnection_retries = 3
+
+[pam]
+reconnection_retries = 3
+
+[domain/{{ sssd_domain }}]
+# Identity provider
+cache_credentials = true
+id_provider = ldap
+auth_provider = ldap
+chpass_provider = ldap
+access_provider = ldap
+
+# LDAP Configuration
+ldap_uri = {{ sssd_ldap_uri }}
+ldap_search_base = {{ sssd_ldap_search_base }}
+ldap_schema = rfc2307
+ldap_user_object_class = posixAccount
+ldap_group_object_class = posixGroup
+ldap_user_name = uid
+ldap_user_uid_number = uidNumber
+ldap_user_gid_number = gidNumber
+ldap_user_home_directory = homeDirectory
+ldap_user_shell = loginShell
+ldap_user_gecos = gecos
+ldap_group_name = cn
+ldap_group_gid_number = gidNumber
+
+# Bind Configuration
+ldap_default_bind_dn = {{ sssd_ldap_bind_dn }}
+ldap_default_authtok_type = password
+ldap_default_authtok = {{ sssd_ldap_bind_password }}
+
+# TLS Configuration
+ldap_id_use_start_tls = true
+ldap_tls_reqcert = demand
+ldap_tls_cacert = /etc/ssl/certs/ca-certificates.crt
+
+# Enumeration
+enumerate = true
+
+# Override settings
+{% if sssd_use_fqdn %}
+use_fully_qualified_names = true
+{% else %}
+use_fully_qualified_names = false
+{% endif %}
+
+# Home directory creation
+override_homedir = /home/%u
+fallback_homedir = /home/%u
+
+# Access control
+ldap_access_filter = (objectClass=posixAccount)
+
+# Performance tuning
+ldap_referrals = false
+ldap_enumeration_refresh_timeout = 300
+ldap_purge_cache_timeout = 0
+
+# Logging
+debug_level = 0x0070

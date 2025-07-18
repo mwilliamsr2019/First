@@ -1,0 +1,20 @@
+---
+# SSSD Configuration Variables
+sssd_domain: "company.local"
+sssd_realm: "COMPANY.LOCAL"
+sssd_ldap_uri: "ldaps://dc.company.local:636"
+sssd_ldap_search_base: "dc=company,dc=local"
+sssd_ldap_bind_dn: "CN=ldap-service,OU=Service Accounts,DC=company,DC=local"
+sssd_ldap_bind_password: "{{ vault_sssd_ldap_bind_password | default('placeholder-password') }}"
+
+# xRDP Configuration Variables
+xrdp_port: 3389
+xrdp_max_bpp: 24
+xrdp_crypt_level: "high"
+xrdp_security_layer: "tls"
+xrdp_certificate_path: "/etc/ssl/certs/xrdp-cert.pem"
+xrdp_key_path: "/etc/ssl/private/xrdp-key.pem"
+
+# Vault variables (use ansible-vault to encrypt)
+# To use: ansible-vault encrypt group_vars/vault.yml
+# vault_sssd_ldap_bind_password: "your-secure-password-here"
