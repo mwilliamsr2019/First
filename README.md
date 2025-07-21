@@ -1,4 +1,5 @@
 # SSSD and xRDP Ansible Playbook
+Current Version: v1.8
 
 This Ansible playbook installs and configures SSSD (System Security Services Daemon) and xRDP on Ubuntu systems for centralized authentication and remote desktop access.
 
